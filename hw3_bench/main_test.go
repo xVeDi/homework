@@ -11,6 +11,7 @@ import (
 func init() {
 	SlowSearch(ioutil.Discard)
 	FastSearch(ioutil.Discard)
+	SuperFastSearch(ioutil.Discard)
 }
 
 // -----
@@ -25,9 +26,17 @@ func TestSearch(t *testing.T) {
 	FastSearch(fastOut)
 	fastResult := fastOut.String()
 
+	superfastOut := new(bytes.Buffer)
+	SuperFastSearch(superfastOut)
+	superfastResult := superfastOut.String()
+
 	if slowResult != fastResult {
 		t.Errorf("results not match\nGot:\n%v\nExpected:\n%v", fastResult, slowResult)
 	}
+	if slowResult != superfastResult {
+		t.Errorf("results not match\nGot:\n%v\nExpected:\n%v", superfastResult, slowResult)
+	}
+
 }
 
 // -----
@@ -42,5 +51,10 @@ func BenchmarkSlow(b *testing.B) {
 func BenchmarkFast(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		FastSearch(ioutil.Discard)
+	}
+}
+func BenchmarkSuperFast(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		SuperFastSearch(ioutil.Discard)
 	}
 }
