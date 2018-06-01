@@ -2,15 +2,15 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"os"
-	"strings"
 	"sync"
 )
 
 type JSONDataFS struct {
-	browsers [10]string `json:"browsers"`
+	browsers [10][]byte `json:"browsers"`
 	email1   []byte
 	email2   []byte
 	name     []byte `json:"name"`
@@ -59,12 +59,14 @@ func (v *JSONDataFS) UnmarshalJSON2(data []byte) {
 	st = 13
 	for i := 13; i < splitN; i++ {
 		if data[i] == 44 && data[i-1] == 34 && data[i+1] == 34 {
-			v.browsers[v.bcount] = string(data[st+1 : i-1])
+			v.browsers[v.bcount] = make([]byte, len(data[st+1:i-1]), len(data[st+1:i-1]))
+			copy(v.browsers[v.bcount], data[st+1:i-1])
 			v.bcount++
 			st = i + 1
 		}
 		if i == (splitN - 1) {
-			v.browsers[v.bcount] = string(data[st+1 : i])
+			v.browsers[v.bcount] = make([]byte, len(data[st+1:i]), len(data[st+1:i]))
+			copy(v.browsers[v.bcount], data[st+1:i])
 			v.bcount++
 		}
 	}
@@ -91,13 +93,17 @@ func SuperFastSearch(out io.Writer) {
 	fileScanner.Split(bufio.ScanLines)
 
 	//seenBrowsers := map[string]struct{}{}
-	seenBrowsers := map[string]struct{}{}
+	seenBrowsers := [][]byte{}
 
 	var isAndroid bool
 	var isMSIE bool
 	var ii int
 	// var email string
-	var browser string
+	var browser []byte
+
+	var sliceAndroid = []byte{65, 110, 100, 114, 111, 105, 100}
+	var sliceMSIE = []byte{77, 83, 73, 69}
+	//var isSeen bool
 
 	fmt.Fprintln(out, "found users:")
 
@@ -113,21 +119,41 @@ func SuperFastSearch(out io.Writer) {
 
 		isAndroid = false
 		isMSIE = false
+		//isSeen := false
 
 		for i = 0; i < user.bcount; i++ {
 
 			browser = user.browsers[i]
 
-			if strings.Contains(browser, "Android") {
-				seenBrowsers[browser] = struct{}{}
+			if bytes.Contains(browser, sliceAndroid) {
 				isAndroid = true
-
+				isSeen := false
+				for _, val := range seenBrowsers {
+					if bytes.Equal(val, browser) {
+						isSeen = true
+						break
+					}
+				}
+				if !isSeen{
+					seenBrowsers = append(seenBrowsers, browser)
+				}
 			}
-			if strings.Contains(browser, "MSIE") {
-				seenBrowsers[browser] = struct{}{}
+
+			if bytes.Contains(browser, sliceMSIE) {
 				isMSIE = true
+				isSeen := false
+				for _, val := range seenBrowsers {
+					if bytes.Equal(val, browser) {
+						isSeen = true
+						break
+					}
 
+				}
+				if !isSeen {
+					seenBrowsers = append(seenBrowsers, browser)
+				}
 			}
+
 		}
 		if isAndroid && isMSIE {
 			//email = strings.Replace(user.email, "@", " [at] ", 1)
